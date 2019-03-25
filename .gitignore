@@ -64,5 +64,5 @@ data/*.pid
 
 # export 
 export/*.txt
-export/*.dat
+export/*.dat*
 export/*.gz

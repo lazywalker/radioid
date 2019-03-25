@@ -8,6 +8,8 @@ require "io"
 
 local DMRID_FILE = '../download/DMRIds.csv'
 local CC_FILE = '../download/CountryCode.csv'
+local DMRID_FILE_EXPORT = '../export/DMRIds.dat'
+local CC_FILE_EXPORT = '../export/CountryCode.txt'
 
 -- string.split = function(s, p)
 --     local rt= {}
@@ -94,20 +96,64 @@ function load_dmrid()
         local city = tokens[4] or ""
         local state = tokens[5]
         local country = tokens[6] or ""
-        local country_iso
-        country_iso = box.space.country_code.index.secondary:get(country)
-        if country_iso then
-            country_iso = country_iso[1]
-        end
         local remarks = tokens[7]
 
-        box.space.dmrid:replace{id, callsign, name:trim(), city:trim(), state, country, country_iso, remarks}
+        box.space.dmrid:replace{id, callsign, name:trim(), city:trim(), state, country, remarks}
+        if city:trim() ~= "" and not box.space.dmrid_city.index.name:get(city) then
+            box.space.dmrid_city:insert{nil, city}
+        end 
 
         i = i + 1
     until true -- end repeat
     end
 
     print(("%s records loaded."):format(i))
+end
+
+--- Export CountryCode.txt
+function export_country_code()
+    local file = assert(io.open(CC_FILE_EXPORT, 'w'))
+
+    for _, tuple in box.space.country_code:pairs(nil, {iterator = box.index.ALL}) do
+        local iso = tuple[1]
+        local country = tuple[2]
+
+        file:write(("%s\t%s\n"):format(iso, country))
+    end
+
+    file:close()
+end
+
+--- Export DMRIds.dat
+function export_dmrid_iso()
+    local file = assert(io.open(DMRID_FILE_EXPORT, 'w'))
+
+    for _, tuple in box.space.dmrid.index.id:pairs(nil, {iterator = box.index.ALL}) do
+        local id = tuple[1]
+        local callsign = tuple[2]
+        local name = tuple[3]
+        local city = tuple[4]
+        local country = tuple[6]
+        local country_iso
+        country_iso = box.space.country_code.index.country:get(country)
+        if country_iso then
+            country_iso = country_iso[1]
+        else
+            country_iso = country
+        end
+
+        city_id = box.space.dmrid_city.index.name:get(city)
+        if city_id then
+            city_id = city_id[1]
+        else
+            city_id = ""
+        end
+
+        
+        file:write(("%s\t%s\t%s\t%s\t%s\n"):format(id, callsign, name, city_id, country_iso))
+    end
+
+    file:close()
 end
 
 -- Configure database
@@ -128,11 +174,11 @@ box.once("bootstrap", function()
         {name = 'un', type = 'string'},
         {name = 'num', type = 'unsigned'}
     })
-    cc:create_index('primary', {
+    cc:create_index('iso', {
         type = 'hash',
         parts = {'iso'}
     })
-    cc:create_index('secondary', {
+    cc:create_index('country', {
         type = 'hash',
         parts = {'country'}
     })
@@ -146,18 +192,34 @@ box.once("bootstrap", function()
         {name = 'city', type = 'string', is_nullable = true},
         {name = 'state', type = 'string', is_nullable = true},
         {name = 'country', type = 'string', is_nullable = true},
-        {name = 'country_iso', type = 'string', is_nullable = true},
         {name = 'remarks', type = 'string', is_nullable = true}
 
     })
-    dmrid:create_index('primary', {
+    dmrid:create_index('id', {
         type = 'hash',
         parts = {'id'}
     })
-    dmrid:create_index('secondary', {
+    dmrid:create_index('callsign', {
         type = 'tree',
         parts = {'callsign'},
         unique = false
+    })
+
+    -- city
+    box.schema.sequence.create('s_city_id', {min=1, start=1})
+    ct = box.schema.space.create('dmrid_city')
+    ct:format({
+        {name = 'id', type = 'unsigned'},
+        {name = 'name', type = 'string'}
+    })
+    ct:create_index('id', {
+        sequence='s_city_id',
+        type = 'hash',
+        parts = {'id'}
+    })
+    ct:create_index('name', {
+        type = 'hash',
+        parts = {'name'}
     })
 
     -- Grant permission to all
