@@ -227,7 +227,16 @@ box.once("bootstrap", function()
 
     -- Load data at first time
     load_country_code()
-    load_dmrid()
 end)
 
-require('console').start()
+-- require('console').start()
+
+print("Loading user.csv ...")
+load_dmrid()
+
+print("Exporting ...")
+export_country_code()
+export_dmrid_iso()
+print("Done.")
+
+os.exit()
