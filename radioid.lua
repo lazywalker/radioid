@@ -1,13 +1,12 @@
 #!/usr/bin/env tarantool
 
--- Copyright 2019 BD7MQB <bd7mqb@qq.com>
+-- Copyright 2019-2020 Michael BD7MQB <bd7mqb@qq.com>
 -- This is free software, licensed under the GNU GENERAL PUBLIC LICENSE, Version 3.0
--- a DmdIds service via ubus
 
 require "io"
 
-local DMRID_FILE = '../download/DMRIds.csv'
-local CC_FILE = '../download/CountryCode.csv'
+local DMRID_FILE = '../download/user.csv'
+local CC_FILE = '../CountryCode.csv'
 local DMRID_FILE_EXPORT = '../export/DMRIds.dat'
 local CC_FILE_EXPORT = '../export/CountryCode.txt'
 
@@ -93,12 +92,13 @@ function load_dmrid()
 
         local callsign = tokens[2]
         local name = tokens[3] or ""
-        local city = tokens[4] or ""
-        local state = tokens[5]
-        local country = tokens[6] or ""
-        local remarks = tokens[7]
+        local lastname = tokens[4] or ""
+        local city = tokens[5] or ""
+        local state = tokens[6]
+        local country = tokens[7] or ""
+        local remarks = tokens[8]
 
-        box.space.dmrid:replace{id, callsign, name:trim(), city:trim(), state, country, remarks}
+        box.space.dmrid:replace{id, callsign, name:trim(), lastname:trim(), city:trim(), state, country, remarks}
         if city:trim() ~= "" and not box.space.dmrid_city.index.name:get(city) then
             box.space.dmrid_city:insert{nil, city}
         end 
@@ -131,9 +131,9 @@ function export_dmrid_iso()
     for _, tuple in box.space.dmrid.index.id:pairs(nil, {iterator = box.index.ALL}) do
         local id = tuple[1]
         local callsign = tuple[2]
-        local name = tuple[3]
-        local city = tuple[4]
-        local country = tuple[6]
+        local name = ("%s %s"):format(tuple[3], tuple[4])
+        local city = tuple[5]
+        local country = tuple[7]
         local country_iso
         country_iso = box.space.country_code.index.country:get(country)
         if country_iso then
@@ -148,9 +148,8 @@ function export_dmrid_iso()
         else
             city_id = ""
         end
-
         
-        file:write(("%s\t%s\t%s\t%s\t%s\n"):format(id, callsign, name, city_id, country_iso))
+        file:write(("%s\t%s\t%s\t%s\n"):format(id, callsign, name:trim(), country_iso))
     end
 
     file:close()
@@ -189,6 +188,7 @@ box.once("bootstrap", function()
         {name = 'id', type = 'unsigned'},
         {name = 'callsign', type = 'string', is_nullable = true},
         {name = 'name', type = 'string', is_nullable = true},
+        {name = 'lastname', type = 'string', is_nullable = true},
         {name = 'city', type = 'string', is_nullable = true},
         {name = 'state', type = 'string', is_nullable = true},
         {name = 'country', type = 'string', is_nullable = true},
