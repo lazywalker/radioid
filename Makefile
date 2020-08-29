@@ -24,4 +24,4 @@ build:
 	@gzip -f -k ${DMRIDS}
 
 sync:
-	rsync -av --delete --exclude='.*' --delete-excluded export/* root@127.0.0.1:/var/www/html/openwrt/radioid/
+	rsync -avz --delete --exclude='.*' --delete-excluded export/* ostar:/home/mic/ostar/radioid/
