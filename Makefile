@@ -16,7 +16,7 @@ all:
 	
 dl:
 	@echo "Downloading user.csv ..."
-	@curl https://database.radioid.net/static/user.csv -o ${USERCSV} --progress
+	@curl --progress-bar https://database.radioid.net/static/user.csv -o ${USERCSV}
 	@echo "Done."
 
 build:
@@ -24,4 +24,4 @@ build:
 	@gzip -f -k ${DMRIDS}
 
 sync:
-	rsync -avz --delete --exclude='.*' --delete-excluded export/* ostar:/home/mic/ostar/radioid/
+	rsync -avz --delete --exclude='.*' --delete-excluded export/* ostar:/var/www/ostar/radioid/
